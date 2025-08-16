@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Sentences - {{ script.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sentence-row { border-bottom: 1px solid #eee; padding: 1rem 0; }
+        .sentence-index { font-weight: bold; color: #764ba2; }
+        .model-translation { color: #007bff; }
+        .no-translation { color: #aaa; font-style: italic; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-language me-2"></i>LiveLingo
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home me-2"></i>Home
+                </a>
+                <a class="nav-link" href="/practice?script_id={{ script.id }}&mode=sequential">
+                    <i class="fas fa-graduation-cap me-2"></i>Practice This Script
+                </a>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h2 class="mb-4 text-center">All Sentences for: <span class="text-primary">{{ script.title }}</span></h2>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 3em;">#</th>
+                        <th class="text-center">Model Translation</th>
+                        <th class="text-center">Sentence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sentence in sentences %}
+                    <tr>
+                        <td class="text-center">{{ loop.index }}</td>
+                        <td class="text-start">
+                            <span id="model-translation-{{ sentence.id }}">{{ sentence.model_translation or '' }}</span>
+                            <button class="btn btn-sm btn-outline-info ms-2" onclick="showModelTranslationModal({{ sentence.id }}, '{{ sentence.model_translation|e }}')">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                        </td>
+                        <td class="text-end" dir="rtl">{{ sentence.original_text }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Modal for adding/editing model translation -->
+        <div class="modal fade" id="modelTranslationModal" tabindex="-1" aria-labelledby="modelTranslationModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modelTranslationModalLabel">Add/Edit Model Translation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <textarea class="form-control" id="modelTranslationInput" rows="4" placeholder="Enter the correct English translation..."></textarea>
+                <input type="hidden" id="modelTranslationSentenceId">
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveModelTranslation()">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 text-center">
+            <a href="/" class="btn btn-secondary me-2"><i class="fas fa-home me-2"></i>Back to Home</a>
+            <a href="/practice?script_id={{ script.id }}&mode=sequential" class="btn btn-primary"><i class="fas fa-play me-2"></i>Practice This Script</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function showModelTranslationModal(sentenceId, currentTranslation) {
+        document.getElementById('modelTranslationSentenceId').value = sentenceId;
+        document.getElementById('modelTranslationInput').value = currentTranslation === 'None' ? '' : currentTranslation;
+        var modal = new bootstrap.Modal(document.getElementById('modelTranslationModal'));
+        modal.show();
+    }
+    async function saveModelTranslation() {
+        const sentenceId = document.getElementById('modelTranslationSentenceId').value;
+        const translation = document.getElementById('modelTranslationInput').value.trim();
+        if (!translation) {
+            alert('Please enter a translation.');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/sentence/${sentenceId}/model_translation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model_translation: translation })
+            });
+            const result = await response.json();
+            if (response.ok && result.success) {
+                document.getElementById('model-translation-' + sentenceId).textContent = translation;
+                document.getElementById('model-translation-' + sentenceId).className = 'model-translation';
+                bootstrap.Modal.getInstance(document.getElementById('modelTranslationModal')).hide();
+            } else {
+                alert('Error saving translation.');
+            }
+        } catch (error) {
+            alert('Error saving translation.');
+        }
+    }
+    </script>
+</body>
+</html> 

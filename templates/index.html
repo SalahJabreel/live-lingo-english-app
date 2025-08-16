@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveLingo - English Practice App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+        }
+        .feature-card {
+            transition: transform 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-language me-2"></i>LiveLingo
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/">
+                    <i class="fas fa-home me-2"></i>Home
+                </a>
+                <a class="nav-link" href="/practice">
+                    <i class="fas fa-graduation-cap me-2"></i>Practice
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container text-center">
+            <h1 class="display-4 mb-4">LiveLingo: Practice English with Your Own Scripts</h1>
+            <p class="lead mb-4">Create scripts, then practice translation and pronunciation!</p>
+            <button class="btn btn-light btn-lg" onclick="showScriptForm()">
+                <i class="fas fa-plus me-2"></i>Create New Script
+            </button>
+        </div>
+    </section>
+
+    <!-- Script Creation Form -->
+    <section id="script-form" class="py-5 hidden">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-edit me-2"></i>Create New Script</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="scriptForm">
+                                <div class="mb-3">
+                                    <label for="scriptTitle" class="form-label">Script Title</label>
+                                    <input type="text" class="form-control" id="scriptTitle" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="scriptContent" class="form-label">Script Content</label>
+                                    <textarea class="form-control" id="scriptContent" rows="10" 
+                                              placeholder="Enter your English text here. It will be automatically split into sentences for practice." required></textarea>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Create Script
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="hideScriptForm()">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scripts Section -->
+    <section id="scripts" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">
+                <i class="fas fa-book me-2"></i>Your Scripts
+            </h2>
+            <div class="row" id="scriptsList">
+                <!-- Scripts will be loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Show/hide script form
+    function showScriptForm() {
+        document.getElementById('script-form').classList.remove('hidden');
+        document.getElementById('script-form').scrollIntoView({ behavior: 'smooth' });
+    }
+    function hideScriptForm() {
+        document.getElementById('script-form').classList.add('hidden');
+        document.getElementById('scriptForm').reset();
+    }
+
+    // Script creation
+    document.addEventListener('DOMContentLoaded', function() {
+        loadScripts();
+        document.getElementById('scriptForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            createScript();
+        });
+    });
+    async function createScript() {
+        const title = document.getElementById('scriptTitle').value;
+        const content = document.getElementById('scriptContent').value;
+        if (!title || !content) {
+            alert('Please fill in both title and content');
+            return;
+        }
+        try {
+            const response = await fetch('/api/scripts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                alert(`Script created successfully! ${result.sentences_count} sentences added.`);
+                hideScriptForm();
+                loadScripts();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error creating script:', error);
+            alert('Error creating script. Please try again.');
+        }
+    }
+    // Load scripts and show practice button
+    async function loadScripts() {
+        try {
+            const response = await fetch('/api/scripts');
+            const scripts = await response.json();
+            const scriptsList = document.getElementById('scriptsList');
+            if (scripts.length === 0) {
+                scriptsList.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No scripts created yet. Create your first script to get started!
+                        </div>
+                    </div>
+                `;
+            } else {
+                scriptsList.innerHTML = scripts.map(script => `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card feature-card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">${script.title}</h5>
+                                <p class="card-text">
+                                    <i class="fas fa-sentence me-2"></i>${script.sentences_count} sentences
+                                </p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-2"></i>
+                                        Created: ${new Date(script.created_at).toLocaleDateString('en-GB')}
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer d-flex flex-wrap gap-2 justify-content-between">
+                                <a class="btn btn-primary btn-sm flex-fill" href="/practice?script_id=${script.id}&mode=sequential">
+                                    <i class="fas fa-play me-2"></i>Start Practice
+                                </a>
+                                <a class="btn btn-info btn-sm flex-fill" href="/scripts/${script.id}/sentences">
+                                    <i class="fas fa-list me-2"></i>View All Sentences
+                                </a>
+                                <button class="btn btn-warning btn-sm flex-fill" onclick="showEditScriptForm(${script.id}, '${encodeURIComponent(script.title)}')">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </button>
+                                <button class="btn btn-danger btn-sm flex-fill" onclick="deleteScript(${script.id})">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </button>
+                            </div>
+                            <div class="collapse mt-2" id="sentences-${script.id}">
+                                <div class="card card-body">
+                                    <div id="sentencesList-${script.id}" class="sentences-list">
+                                        <div class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading scripts:', error);
+        }
+    }
+
+    // Add Edit Script Modal
+    const editScriptModal = document.createElement('div');
+    editScriptModal.innerHTML = `
+    <div class="modal fade" id="editScriptModal" tabindex="-1" aria-labelledby="editScriptModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editScriptModalLabel">Edit Script</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editScriptForm">
+              <input type="hidden" id="editScriptId">
+              <div class="mb-3">
+                <label for="editScriptTitle" class="form-label">Script Title</label>
+                <input type="text" class="form-control" id="editScriptTitle" required>
+              </div>
+              <div class="mb-3">
+                <label for="editScriptContent" class="form-label">Script Content</label>
+                <textarea class="form-control" id="editScriptContent" rows="8" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
+    document.body.appendChild(editScriptModal);
+
+    // Edit script logic
+    function showEditScriptForm(id, title) {
+        fetch(`/api/scripts/${id}`)
+            .then(res => res.json())
+            .then(script => {
+                document.getElementById('editScriptId').value = script.id;
+                document.getElementById('editScriptTitle').value = decodeURIComponent(title);
+                document.getElementById('editScriptContent').value = script.content;
+                new bootstrap.Modal(document.getElementById('editScriptModal')).show();
+            });
+    }
+    document.getElementById('editScriptForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = document.getElementById('editScriptId').value;
+        const title = document.getElementById('editScriptTitle').value;
+        const content = document.getElementById('editScriptContent').value;
+        try {
+            const response = await fetch(`/api/scripts/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            });
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('editScriptModal')).hide();
+                loadScripts();
+            } else {
+                alert('Error updating script');
+            }
+        } catch (error) {
+            alert('Error updating script');
+        }
+    });
+
+    // Delete script logic
+    async function deleteScript(id) {
+        if (!confirm('Are you sure you want to delete this script?')) return;
+        try {
+            const response = await fetch(`/api/scripts/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (response.ok && result.success) {
+                loadScripts();
+            } else {
+                alert('Error deleting script' + (result.error ? (': ' + result.error) : ''));
+            }
+        } catch (error) {
+            alert('Error deleting script. ' + error);
+        }
+    }
+
+    async function toggleSentences(scriptId, btn) {
+        const collapseId = `sentences-${scriptId}`;
+        const collapseEl = document.getElementById(collapseId);
+        const listEl = document.getElementById(`sentencesList-${scriptId}`);
+        if (!collapseEl.classList.contains('show')) {
+            // Fetch sentences only if not already loaded
+            listEl.innerHTML = '<div class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            try {
+                const response = await fetch(`/api/scripts/${scriptId}/sentences?mode=sequential`);
+                const sentences = await response.json();
+                if (sentences.length === 0) {
+                    listEl.innerHTML = '<div class="alert alert-info">No sentences found in this script.</div>';
+                } else {
+                    listEl.innerHTML = '<ol>' + sentences.map(s => `<li>${s.original_text}</li>`).join('') + '</ol>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="alert alert-danger">Error loading sentences.</div>';
+            }
+        }
+        // Toggle collapse
+        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+        bsCollapse.toggle();
+        // Change button text/icon
+        if (collapseEl.classList.contains('show')) {
+            btn.innerHTML = '<i class="fas fa-list me-2"></i>Show Sentences';
+        } else {
+            btn.innerHTML = '<i class="fas fa-eye-slash me-2"></i>Hide Sentences';
+        }
+    }
+    </script>
+</body>
+</html> 
